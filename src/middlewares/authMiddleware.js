@@ -16,7 +16,7 @@ const authMiddleware = (req, res, next) => {
     next();
   } catch {
     // Code-15 bug: calls next() when JWT verification fails instead of 401
-    next();
+    return res.status(401).json({ message: "Invalid or expired token" });
   }
 };
 
