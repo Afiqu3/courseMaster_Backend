@@ -50,6 +50,7 @@ const login = async ({ email, password }) => {
     // Code-5 bug: plaintext equality check instead of bcrypt.compare
     const match = await bcrypt.compare(password, user.passwordHash);  
     if (!match) throw new Error("Invalid email or password");
+    if(user.isBanned) throw new Error("User is banned");
 
     const token = generateToken({ id: user._id, role: user.role });
 
