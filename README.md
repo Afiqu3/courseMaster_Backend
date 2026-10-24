@@ -98,12 +98,16 @@ FRONTEND_URL=http://localhost:5173
 
 ## API Documentation
 
-Base URL: `http://localhost:5000/api/api`
+Local API base URL: `http://localhost:5000/api`
+
+The health check is available at `http://localhost:5000/`.
+
+For Postman, use the API base URL above. For protected endpoints, select the built-in token authentication mode and enter the token returned by login. Student endpoints require a student account; admin endpoints require an admin account.
 
 ### Authentication Endpoints
 
 #### Register
-- **POST** `/api/auth/register`
+- **POST** `/auth/register`
 - **Body:**
   ```json
   {
@@ -115,12 +119,13 @@ Base URL: `http://localhost:5000/api/api`
   ```
 - **Response:** User object with token
 - **Note:** 
-  - By default, users are registered as "student"
-  - To register as "admin", provide a valid `adminKey` that matches `ADMIN_REGISTRATION_KEY` in environment variables
-  - If invalid admin key is provided, registration will fail
+  - With `ADMIN_REGISTRATION_KEY` configured, registrations without an admin key create student accounts
+  - To register as "admin", provide a valid `adminKey` that matches `ADMIN_REGISTRATION_KEY`
+  - If an invalid admin key is provided, registration will fail
+  - `ADMIN_REGISTRATION_KEY` must be set before exposing registration. If it is unset, the current implementation can grant admin role to registrations without a key.
 
 #### Login
-- **POST** `/api/auth/login`
+- **POST** `/auth/login`
 - **Body:**
   ```json
   {
@@ -131,14 +136,13 @@ Base URL: `http://localhost:5000/api/api`
 - **Response:** User object with token
 
 #### Get Current User
-- **GET** `/api/auth/me`
-- **Headers:** `Authorization: Bearer <token>`
+- **GET** `/auth/me`
 - **Response:** User object
 
 ### Course Endpoints (Public)
 
 #### Get All Courses
-- **GET** `/api/courses`
+- **GET** `/courses`
 - **Query Parameters:**
   - `page` - Page number (default: 1)
   - `limit` - Items per page (default: 8)
@@ -149,14 +153,13 @@ Base URL: `http://localhost:5000/api/api`
 - **Response:** Paginated courses list
 
 #### Get Course by ID
-- **GET** `/api/courses/:id`
+- **GET** `/courses/:id`
 - **Response:** Course object with full details
 
 ### Enrollment Endpoints (Protected - Student)
 
 #### Enroll in Course
-- **POST** `/api/enrollments/:courseId`
-- **Headers:** `Authorization: Bearer <token>`
+- **POST** `/enrollments/:courseId`
 - **Body (optional):**
   ```json
   {
@@ -166,13 +169,11 @@ Base URL: `http://localhost:5000/api/api`
 - **Response:** Enrollment object
 
 #### Get My Enrollments
-- **GET** `/api/enrollments/my`
-- **Headers:** `Authorization: Bearer <token>`
+- **GET** `/enrollments/my`
 - **Response:** Array of enrollment objects
 
 #### Mark Lesson as Complete
-- **PATCH** `/api/enrollments/:enrollId/complete-lesson`
-- **Headers:** `Authorization: Bearer <token>`
+- **PATCH** `/enrollments/:enrollId/complete-lesson`
 - **Body:**
   ```json
   {
@@ -184,8 +185,7 @@ Base URL: `http://localhost:5000/api/api`
 ### Assignment Endpoints (Protected - Student)
 
 #### Submit Assignment
-- **POST** `/api/assignments/submit`
-- **Headers:** `Authorization: Bearer <token>`
+- **POST** `/assignments/submit`
 - **Body:**
   ```json
   {
@@ -198,15 +198,17 @@ Base URL: `http://localhost:5000/api/api`
 - **Response:** Assignment submission object
 
 #### Get My Submissions
-- **GET** `/api/assignments/my`
-- **Headers:** `Authorization: Bearer <token>`
+- **GET** `/assignments/my`
 - **Response:** Array of assignment submissions
+
+#### Get Assignment Statistics
+- **GET** `/assignments/stats?courseId=<course-id>`
+- **Response:** Assignment average, reviewed count, and submissions for the course
 
 ### Quiz Endpoints (Protected - Student)
 
 #### Submit Quiz
-- **POST** `/api/quizzes/submit`
-- **Headers:** `Authorization: Bearer <token>`
+- **POST** `/quizzes/submit`
 - **Body:**
   ```json
   {
@@ -215,58 +217,53 @@ Base URL: `http://localhost:5000/api/api`
     "answers": [0, 1, 2, 0] // Array of selected option indices
   }
   ```
-- **Response:**
-  ```json
-  {
-    "total": 4,
-    "score": 3,
-    "percent": 75
-  }
-  ```
+- **Response:** JSON object containing the submission ID, total questions, score, percentage, and creation time
+
+#### Get My Quiz Submissions
+- **GET** `/quizzes/my`
+- **Optional query parameter:** `courseId`
+- **Response:** Array of quiz submissions
+
+#### Get Quiz Statistics
+- **GET** `/quizzes/stats?courseId=<course-id>`
+- **Response:** Average percentage and latest submission per lesson
 
 ### Admin Endpoints (Protected - Admin Only)
 
 #### Create Course
-- **POST** `/api/admin/courses`
-- **Headers:** `Authorization: Bearer <token>`
+- **POST** `/admin/courses`
 - **Body:** See Course Schema below
 - **Response:** Created course object
 
 #### Update Course
-- **PATCH** `/api/admin/courses/:id`
-- **Headers:** `Authorization: Bearer <token>`
+- **PATCH** `/admin/courses/:id`
 - **Body:** Course fields to update
 - **Response:** Updated course object
 
 #### Delete Course
-- **DELETE** `/api/admin/courses/:id`
-- **Headers:** `Authorization: Bearer <token>`
+- **DELETE** `/admin/courses/:id`
 - **Response:** Success message
 
 #### Get All Enrollments
-- **GET** `/api/admin/enrollments`
-- **Headers:** `Authorization: Bearer <token>`
+- **GET** `/admin/enrollments`
 - **Query Parameters:**
   - `courseId` - Filter by course
   - `batchId` - Filter by batch
 - **Response:** Array of enrollment objects
 
 #### Get All Assignments
-- **GET** `/api/admin/assignments`
-- **Headers:** `Authorization: Bearer <token>`
+- **GET** `/admin/assignments`
 - **Response:** Array of assignment submissions
 
 #### Get Analytics
-- **GET** `/api/admin/analytics`
-- **Headers:** `Authorization: Bearer <token>` (Admin only)
+- **GET** `/admin/analytics`
 - **Response:** Analytics data including:
   - Chart data for enrollments over last 30 days
   - Top courses by enrollments
   - Platform statistics (total enrollments, courses, students, instructors)
 
 #### Review Assignment
-- **PATCH** `/api/admin/assignments/:id/review`
-- **Headers:** `Authorization: Bearer <token>`
+- **PATCH** `/admin/assignments/:id/review`
 - **Body:**
   ```json
   {
@@ -276,6 +273,32 @@ Base URL: `http://localhost:5000/api/api`
   }
   ```
 - **Response:** Updated assignment submission
+
+### User Management Endpoints (Protected - Admin Only)
+
+All endpoints below require an admin bearer token.
+
+#### List Users
+- **GET** `/users`
+- **Response:** Array of users without password hashes
+
+#### Update User Role
+- **PATCH** `/users/:id/role`
+- **Body:**
+  ```json
+  {
+    "role": "student"
+  }
+  ```
+- **Allowed roles:** `student`, `admin`
+
+#### Toggle User Ban
+- **PATCH** `/users/:id/ban`
+- **Response:** Updated user
+
+#### Delete User
+- **DELETE** `/users/:id`
+- **Response:** Success message
 
 ## Data Models
 
@@ -405,4 +428,3 @@ The backend is deployed on **Vercel**. Make sure to set all environment variable
 - Development server runs on `http://localhost:5000` (default)
 - Uses `nodemon` for auto-restart during development
 - MongoDB connection is handled via Mongoose
-
